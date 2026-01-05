@@ -82,6 +82,16 @@ void freeType(Type* type) {
 
 int sizeOfType(Type* type) {
   // TODO
+  switch (type->typeClass)
+  {
+  case TP_INT:
+    return INT_SIZE;
+  case TP_CHAR:
+    return CHAR_SIZE;
+  case TP_ARRAY:
+    return (type->arraySize * sizeOfType(type->elementType));
+  }
+  return 0;
 }
 
 /******************* Constant utility ******************************/
@@ -341,7 +351,47 @@ void exitBlock(void) {
 }
 
 void declareObject(Object* obj) {
-  // TODO: rewrite the function to fill all values of attributes
+  Object *owner;
+
+  if (symtab->currentScope == NULL)
+    addObject(&(symtab->globalObjectList), obj);
+  else
+  {
+    switch (obj->kind)
+    {
+    case OBJ_VARIABLE:
+      obj->varAttrs->scope = symtab->currentScope;
+      obj->varAttrs->localOffset = symtab->currentScope->frameSize;
+      symtab->currentScope->frameSize += sizeOfType(obj->varAttrs->type);
+      break;
+    case OBJ_PARAMETER:
+      obj->paramAttrs->scope = symtab->currentScope;
+      obj->paramAttrs->localOffset = symtab->currentScope->frameSize;
+      symtab->currentScope->frameSize++;
+      owner = symtab->currentScope->owner;
+      switch (owner->kind)
+      {
+      case OBJ_FUNCTION:
+        addObject(&(owner->funcAttrs->paramList), obj);
+        owner->funcAttrs->paramCount++;
+        break;
+      case OBJ_PROCEDURE:
+        addObject(&(owner->procAttrs->paramList), obj);
+        owner->procAttrs->paramCount++;
+        break;
+      default:
+        break;
+      }
+      break;
+    case OBJ_FUNCTION:
+      obj->funcAttrs->scope->outer = symtab->currentScope;
+      break;
+    case OBJ_PROCEDURE:
+      obj->procAttrs->scope->outer = symtab->currentScope;
+      break;
+    default:
+      break;
+    }
+    addObject(&(symtab->currentScope->objList), obj);
+  }
 }
-
-
